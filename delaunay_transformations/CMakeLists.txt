@@ -12,13 +12,16 @@ if (NOT EXISTS ${DEPENDENCY_DELAUANAY_PATH})
 endif ()
 
 set(DELAUNAY_FILES
-        delaunay/delaunay.h delaunay/delaunay.c)
+        delaunay/delaunay.h delaunay/delaunay.c
+        )
 add_library(delaunay ${DELAUNAY_FILES})
 
 find_package(OpenCV REQUIRED)
 
 set(SOURCE_FILES
-        dt.c dt.h)
+        dt.c dt.h
+        points_generator.c points_generator.h
+        )
 add_library(delaunay_transformations ${SOURCE_FILES})
 target_link_libraries(delaunay_transformations
         delaunay
