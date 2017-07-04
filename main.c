@@ -8,6 +8,11 @@
 
 #include "delaunay_transformations/dt.h"
 
+IplImage* image = 0;
+
+IplImage* gray = 0;
+
+IplImage* dst = 0;
 
 int main(int argc, char* argv[]) {
 	srand((unsigned int) time(NULL));
@@ -17,7 +22,7 @@ int main(int argc, char* argv[]) {
 
 	IplImage* image = cvLoadImage(filename, 1);
 
-	dt_triangulate_random(image, (unsigned int) ((image->width * image->height) * 0.00065));
+	dt_triangulate_canny(image, 100000);
 
 	cvNamedWindow("original", CV_WINDOW_OPENGL);
 	cvShowImage("original", image);
