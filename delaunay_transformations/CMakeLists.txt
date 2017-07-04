@@ -15,8 +15,12 @@ set(DELAUNAY_FILES
         delaunay/delaunay.h delaunay/delaunay.c)
 add_library(delaunay ${DELAUNAY_FILES})
 
+find_package(OpenCV REQUIRED)
 
 set(SOURCE_FILES
         dt.c dt.h)
 add_library(delaunay_transformations ${SOURCE_FILES})
-target_link_libraries(delaunay_transformations delaunay)
+target_link_libraries(delaunay_transformations
+        delaunay
+        ${OpenCV_LIBS}
+        )
