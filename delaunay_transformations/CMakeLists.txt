@@ -21,6 +21,7 @@ find_package(OpenCV REQUIRED)
 set(SOURCE_FILES
         dt.c dt.h
         points_generator.c points_generator.h
+        drawer.c drawer.h
         )
 add_library(delaunay_transformations ${SOURCE_FILES})
 target_link_libraries(delaunay_transformations
