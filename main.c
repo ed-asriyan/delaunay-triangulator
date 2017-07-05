@@ -8,28 +8,61 @@
 
 #include "delaunay_transformations/dt.h"
 
-IplImage* image = 0;
+void testCamera() {
+	// получаем любую подключённую камеру
+	CvCapture* capture = cvCreateCameraCapture(CV_CAP_ANY); //cvCaptureFromCAM( 0 );
+	assert(capture);
 
-IplImage* gray = 0;
+	cvSetCaptureProperty(capture, CV_CAP_PROP_FRAME_WIDTH, 1280);//1280);
+	cvSetCaptureProperty(capture, CV_CAP_PROP_FRAME_HEIGHT, 960);//960);
 
-IplImage* dst = 0;
+	cvNamedWindow("capture", CV_WINDOW_NORMAL);
 
-int main(int argc, char* argv[]) {
-	srand((unsigned int) time(NULL));
+	printf("[i] press Enter for capture image and Esc for quit!\n\n");
 
-	const char* filename = argv[1];
-	printf("[i] file: %s\n", filename);
+	while (1) {
+		IplImage* image = cvQueryFrame(capture);
 
-	IplImage* image = cvLoadImage(filename, 1);
+		unsigned int points = dt_triangulate_canny(image, 10000);
+		printf("[i] points number: %d\n", points);
+		fflush(stdout);
+		cvShowImage("capture", image);
 
-	dt_triangulate_canny(image, 100000);
+		char c = (char) cvWaitKey(33);
+		if (c == 27) { // ESC
+			break;
+		}
+	}
+	cvReleaseCapture(&capture);
+	cvDestroyWindow("capture");
+}
 
-	cvNamedWindow("original", CV_WINDOW_OPENGL);
+void testImage(const char* file_name) {
+	IplImage* image = cvLoadImage(file_name, 1);
+	assert(image);
+
+	unsigned int points = dt_triangulate_canny(image, 40000);
+	printf("[i] points number: %d\n", points);
+
+	cvNamedWindow("original", CV_WINDOW_NORMAL);
 	cvShowImage("original", image);
-
 	cvWaitKey(0);
-	cvDestroyWindow("original");
 
 	cvReleaseImage(&image);
+	cvDestroyWindow("original");
+}
+
+int main(int argc, const char* argv[]) {
+	switch (argc) {
+		case 1:
+			testCamera();
+			break;
+		case 2:
+			testImage(argv[1]);
+			break;
+		default:
+			break;
+	}
+
 	return 0;
 }

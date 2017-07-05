@@ -18,7 +18,7 @@ void shuffle(del_point2d_t* array, size_t n) {
 	}
 }
 
-int dt_generate_random(IplImage* image, del_point2d_t* points, unsigned int points_num) {
+unsigned int dt_generate_random(IplImage* image, del_point2d_t* points, unsigned int points_num) {
 	const int width = image->width;
 	const int height = image->height;
 
@@ -27,28 +27,26 @@ int dt_generate_random(IplImage* image, del_point2d_t* points, unsigned int poin
 		points[i].y = rand() % height;
 	}
 
-	return 1;
+	return points_num;
 }
 
-int dt_generate_points_canny(IplImage* image, del_point2d_t* points, unsigned int points_num) {
+unsigned int dt_generate_points_canny(IplImage* image, del_point2d_t* points, unsigned int points_num) {
 	const int width = image->width;
 	const int height = image->height;
 
 	IplImage* gray = cvCreateImage(cvGetSize(image), IPL_DEPTH_8U, 1);
-	IplImage* dst = cvCreateImage(cvGetSize(image), IPL_DEPTH_8U, 1);
-
-	// преобразуем в градации серого
 	cvCvtColor(image, gray, CV_RGB2GRAY);
 
-	// получаем границы
-	cvCanny(gray, dst, 5, 10, 3);
+	IplImage* dst = cvCreateImage(cvGetSize(image), IPL_DEPTH_8U, 1);
+	cvCanny(image, dst, 10, 10, 3);
+	cvReleaseImage(&gray);
 
 	unsigned int count = 0;
 	char* const dst_data = dst->imageData;
 	const int dst_step = dst->widthStep;
-	for (int y = 0; y < height; ++y) {
+	for (int y = 0; y < height; y += 3) {
 		uchar* ptr = (uchar*) (dst_data + y * dst_step);
-		for (int x = 0; x < dst->width; ++x) {
+		for (int x = 0; x < dst->width; x += 3) {
 			uchar blue = ptr[3 * x];
 			uchar green = ptr[3 * x + 1];
 			uchar red = ptr[3 * x + 2];
@@ -60,9 +58,9 @@ int dt_generate_points_canny(IplImage* image, del_point2d_t* points, unsigned in
 	del_point2d_t* p = (del_point2d_t*) malloc(count * sizeof(del_point2d_t));
 
 	unsigned int i = 0;
-	for (int y = 0; y < height; ++y) {
+	for (int y = 0; y < height; y += 3) {
 		uchar* ptr = (uchar*) (dst_data + y * dst_step);
-		for (int x = 0; x < width; ++x) {
+		for (int x = 0; x < width; x += 3) {
 			uchar blue = ptr[3 * x];
 			uchar green = ptr[3 * x + 1];
 			uchar red = ptr[3 * x + 2];
@@ -70,19 +68,23 @@ int dt_generate_points_canny(IplImage* image, del_point2d_t* points, unsigned in
 			if (CANNY_CHECK_COLOR(red, green, blue)) {
 				p[i].x = x;
 				p[i].y = y;
-				if (i == count)break;
+				if (i == count) {
+					break;
+				}
 				++i;
 			}
 		}
 	}
-
-	shuffle(p, count);
+	if (count < points_num) {
+		points_num = count;
+	} else {
+		shuffle(p, count);
+	}
 
 	memcpy(points, p, points_num * sizeof(del_point2d_t));
 
 	free(p);
 	cvReleaseImage(&dst);
-	cvReleaseImage(&gray);
 
-	return 1;
+	return points_num;
 }
