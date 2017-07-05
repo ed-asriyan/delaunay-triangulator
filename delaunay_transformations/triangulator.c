@@ -2,9 +2,16 @@
 // Created by ed on 04.07.17.
 //
 
-#include "points_generator.h"
+#include "triangulator.h"
 
 #define CANNY_CHECK_COLOR(r, g, b) ((r) > 250 && (b) > 250 && (g) > 250)
+
+DtTriangles* dt_triangulate(del_point2d_t* points, unsigned int points_num) {
+	delaunay2d_t* res = delaunay2d_from(points, points_num);
+	tri_delaunay2d_t* tdel = tri_delaunay2d_from(res);
+	delaunay2d_release(res);
+	return tdel;
+}
 
 void shuffle(del_point2d_t* array, size_t n) {
 	if (n > 1) {
@@ -18,19 +25,20 @@ void shuffle(del_point2d_t* array, size_t n) {
 	}
 }
 
-unsigned int dt_generate_random(IplImage* image, del_point2d_t* points, unsigned int points_num) {
+DtTriangles* dt_triangles_random(const IplImage* image, unsigned int points_num) {
 	const int width = image->width;
 	const int height = image->height;
 
+	del_point2d_t* points = (del_point2d_t*) malloc(points_num * sizeof(del_point2d_t));
 	for (size_t i = 0; i < points_num; ++i) {
 		points[i].x = rand() % width;
 		points[i].y = rand() % height;
 	}
 
-	return points_num;
+	return dt_triangulate(points, points_num);
 }
 
-unsigned int dt_generate_points_canny(IplImage* image, del_point2d_t* points, unsigned int points_num) {
+DtTriangles* dt_triangles_canny(const IplImage* image, unsigned int points_num) {
 	const int width = image->width;
 	const int height = image->height;
 
@@ -46,13 +54,18 @@ unsigned int dt_generate_points_canny(IplImage* image, del_point2d_t* points, un
 	const int dst_step = dst->widthStep;
 	for (int y = 0; y < height; y += 3) {
 		uchar* ptr = (uchar*) (dst_data + y * dst_step);
-		for (int x = 0; x < dst->width; x += 3) {
+		for (int x = 0; x < width; x += 3) {
 			uchar blue = ptr[3 * x];
 			uchar green = ptr[3 * x + 1];
 			uchar red = ptr[3 * x + 2];
 
 			count += CANNY_CHECK_COLOR(red, green, blue);
 		}
+	}
+
+	if (count < 3) {
+		cvReleaseImage(&dst);
+		return NULL;
 	}
 
 	del_point2d_t* p = (del_point2d_t*) malloc(count * sizeof(del_point2d_t));
@@ -81,10 +94,16 @@ unsigned int dt_generate_points_canny(IplImage* image, del_point2d_t* points, un
 		shuffle(p, count);
 	}
 
+	del_point2d_t* points = (del_point2d_t*) malloc(points_num * sizeof(del_point2d_t));
 	memcpy(points, p, points_num * sizeof(del_point2d_t));
 
 	free(p);
 	cvReleaseImage(&dst);
 
-	return points_num;
+	DtTriangles* result = dt_triangulate(points, points_num);
+	return result;
+}
+
+void dt_free_triangles(DtTriangles* triangles) {
+	tri_delaunay2d_release(triangles);
 }
