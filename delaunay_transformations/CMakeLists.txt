@@ -19,8 +19,7 @@ add_library(delaunay ${DELAUNAY_FILES})
 find_package(OpenCV REQUIRED)
 
 set(SOURCE_FILES
-        dt.c dt.h
-        points_generator.c points_generator.h
+        triangulator.c triangulator.h
         drawer.c drawer.h
         )
 add_library(delaunay_transformations ${SOURCE_FILES})

@@ -6,27 +6,41 @@
 #include <stdio.h>
 #include <time.h>
 
-#include "delaunay_transformations/dt.h"
+#include "delaunay_transformations/triangulator.h"
+#include "delaunay_transformations/drawer.h"
 
 void testCamera() {
-	// получаем любую подключённую камеру
-	CvCapture* capture = cvCreateCameraCapture(CV_CAP_ANY); //cvCaptureFromCAM( 0 );
+	CvCapture* capture = cvCreateCameraCapture(CV_CAP_ANY);
 	assert(capture);
 
-	cvSetCaptureProperty(capture, CV_CAP_PROP_FRAME_WIDTH, 1280);//1280);
-	cvSetCaptureProperty(capture, CV_CAP_PROP_FRAME_HEIGHT, 960);//960);
+	cvSetCaptureProperty(capture, CV_CAP_PROP_FRAME_WIDTH, 1280);
+	cvSetCaptureProperty(capture, CV_CAP_PROP_FRAME_HEIGHT, 960);
 
 	cvNamedWindow("capture", CV_WINDOW_NORMAL);
 
 	printf("[i] press Enter for capture image and Esc for quit!\n\n");
 
 	while (1) {
-		IplImage* image = cvQueryFrame(capture);
+		IplImage* source = cvQueryFrame(capture);
 
-		unsigned int points = dt_triangulate_canny(image, 10000);
-		printf("[i] points number: %d\n", points);
-		fflush(stdout);
-		cvShowImage("capture", image);
+		IplImage* dst = cvCreateImage(cvSize(source->width, source->height), 8, 3);
+
+		DtTriangles* triangles = dt_triangles_canny(source, 15000);
+		if (triangles == NULL) {
+			printf("Error\n");
+			cvReleaseImage(&source);
+			return;
+		}
+		printf("[i] points number:    %4d\n", triangles->num_points);
+		printf("[i] triangles number: %4d\n", triangles->num_triangles);
+		printf("\n");
+
+		dt_draw_edges_thickness(dst, source, triangles);
+		dt_free_triangles(triangles);
+
+		cvShowImage("original", dst);
+
+		cvReleaseImage(&dst);
 
 		char c = (char) cvWaitKey(33);
 		if (c == 27) { // ESC
@@ -38,21 +52,34 @@ void testCamera() {
 }
 
 void testImage(const char* file_name) {
-	IplImage* image = cvLoadImage(file_name, 1);
-	assert(image);
+	IplImage* source = cvLoadImage(file_name, 1);
+	IplImage* dst = cvCreateImage(cvGetSize(source), 8, 3);
 
-	unsigned int points = dt_triangulate_canny(image, 40000);
-	printf("[i] points number: %d\n", points);
+	DtTriangles* triangles = dt_triangles_canny(source, 40000);
+	if (triangles == NULL) {
+		printf("Error\n");
+		cvReleaseImage(&source);
+		return;
+	}
+	printf("[i] points number:    %5d\n", triangles->num_points);
+	printf("[i] triangles number: %5d\n", triangles->num_triangles);
+	printf("\n");
+
+	dt_draw_edges_thickness(dst, source, triangles);
+	dt_free_triangles(triangles);
 
 	cvNamedWindow("original", CV_WINDOW_NORMAL);
-	cvShowImage("original", image);
+	cvShowImage("original", dst);
 	cvWaitKey(0);
 
-	cvReleaseImage(&image);
+	cvReleaseImage(&dst);
+	cvReleaseImage(&source);
 	cvDestroyWindow("original");
 }
 
 int main(int argc, const char* argv[]) {
+	srand((unsigned int) time(NULL));
+
 	switch (argc) {
 		case 1:
 			testCamera();
