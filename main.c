@@ -5,6 +5,7 @@
 #include <cv.h>
 #include <stdio.h>
 #include <time.h>
+#include <string.h>
 
 #include "delaunay_transformations/triangulator.h"
 #include "delaunay_transformations/drawer.h"
@@ -12,13 +13,70 @@
 DtTriangles* (* generator)(const IplImage* image, unsigned int points_num) = NULL;
 int (* drawer)(IplImage* dst, const IplImage* source, const DtTriangles* triangles) = NULL;
 
+const char* file_name = NULL;
+
 unsigned int count = 0;
+
+int recognize_count(const char* name, const char* value) {
+	if (!strcmp(name, "--count") ||
+		!strcmp(name, "-c")) {
+		count = (unsigned int) atoi(value);
+		return 1;
+	}
+
+	return 0;
+}
+
+int recognize_generator(const char* name, const char* value) {
+	if (!strcmp(name, "--generator") ||
+		!strcmp(name, "-g")) {
+
+		if (!strcmp(value, "random") ||
+			!strcmp(value, "rand")) {
+			generator = dt_triangles_random;
+		}
+		if (!strcmp(value, "canny")) {
+			generator = dt_triangles_canny;
+		}
+
+		return 1;
+	}
+
+	return 0;
+}
+
+int recognize_drawer(const char* name, const char* value) {
+	if (!strcmp(name, "--drawer") ||
+		!strcmp(name, "-d")) {
+
+		if (!strcmp(value, "fill")) {
+			drawer = dt_draw_filled;
+		}
+		if (!strcmp(value, "edges")) {
+			drawer = dt_draw_edges;
+		}
+		if (!strcmp(value, "edges_thickness")) {
+			drawer = dt_draw_edges_thickness;
+		}
+
+		return 1;
+	}
+
+	return 0;
+}
 
 void recognize_arguments(int argc, const char* argv[]) {
 	// default
 	generator = dt_triangles_random;
-	drawer = dt_draw_edges_thickness;
-	count = 10000000;
+	drawer = dt_draw_filled;
+	count = 5000;
+
+	for (int i = 0; i < argc; i += 2) {
+		if (recognize_count(argv[i], argv[i + 1])) continue;
+		if (recognize_generator(argv[i], argv[i + 1])) continue;
+		if (recognize_drawer(argv[i], argv[i + 1])) continue;
+		file_name = argv[i--];
+	}
 }
 
 int triangulate(const IplImage* source, IplImage* dst) {
@@ -79,7 +137,7 @@ void testCamera() {
 	cvDestroyWindow("capture");
 }
 
-void testImage(const char* file_name) {
+void testImage() {
 	IplImage* source = cvLoadImage(file_name, 1);
 	IplImage* dst = cvCreateImage(cvGetSize(source), 8, 3);
 
@@ -98,15 +156,10 @@ int main(int argc, const char* argv[]) {
 
 	recognize_arguments(argc, argv);
 
-	switch (argc) {
-		case 1:
-			testCamera();
-			break;
-		case 2:
-			testImage(argv[1]);
-			break;
-		default:
-			break;
+	if (file_name == NULL){
+		testCamera();
+	} else {
+		testImage();
 	}
 
 	return 0;
