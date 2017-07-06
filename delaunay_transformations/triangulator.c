@@ -4,6 +4,7 @@
 
 #include "triangulator.h"
 
+#define MIN_RADIUS 3
 #define CANNY_CHECK_COLOR(r, g, b) ((r) > 250 && (b) > 250 && (g) > 250)
 
 DtTriangles* dt_triangulate(del_point2d_t* points, unsigned int points_num) {
@@ -29,11 +30,27 @@ DtTriangles* dt_triangles_random(const IplImage* image, unsigned int points_num)
 	const int width = image->width;
 	const int height = image->height;
 
-	del_point2d_t* points = (del_point2d_t*) malloc(points_num * sizeof(del_point2d_t));
-	for (size_t i = 0; i < points_num; ++i) {
-		points[i].x = rand() % width;
-		points[i].y = rand() % height;
+	const int x_width = width / MIN_RADIUS;
+	const int y_height = height / MIN_RADIUS;
+	const unsigned int count = (const unsigned int) (x_width * y_height);
+
+	del_point2d_t* all = (del_point2d_t*) malloc(count * sizeof(del_point2d_t));
+	for (int y = 0; y < y_height; ++y) {
+		for (int x = 0; x < x_width; ++x) {
+			all[y * x_width + x].x = MIN_RADIUS * x;
+			all[y * x_width + x].y = MIN_RADIUS * y;
+		}
 	}
+
+	if (count < points_num) {
+		points_num = count;
+	} else {
+		shuffle(all, count);
+	}
+
+	del_point2d_t* points = (del_point2d_t*) malloc(points_num * sizeof(del_point2d_t));
+	memcpy(points, all, points_num * sizeof(del_point2d_t));
+	free(all);
 
 	return dt_triangulate(points, points_num);
 }
@@ -52,9 +69,9 @@ DtTriangles* dt_triangles_canny(const IplImage* image, unsigned int points_num) 
 	unsigned int count = 0;
 	char* const dst_data = dst->imageData;
 	const int dst_step = dst->widthStep;
-	for (int y = 0; y < height; y += 3) {
+	for (int y = 0; y < height; y += MIN_RADIUS) {
 		uchar* ptr = (uchar*) (dst_data + y * dst_step);
-		for (int x = 0; x < width; x += 3) {
+		for (int x = 0; x < width; x += MIN_RADIUS) {
 			uchar blue = ptr[3 * x];
 			uchar green = ptr[3 * x + 1];
 			uchar red = ptr[3 * x + 2];
@@ -71,9 +88,9 @@ DtTriangles* dt_triangles_canny(const IplImage* image, unsigned int points_num) 
 	del_point2d_t* p = (del_point2d_t*) malloc(count * sizeof(del_point2d_t));
 
 	unsigned int i = 0;
-	for (int y = 0; y < height; y += 3) {
+	for (int y = 0; y < height; y += MIN_RADIUS) {
 		uchar* ptr = (uchar*) (dst_data + y * dst_step);
-		for (int x = 0; x < width; x += 3) {
+		for (int x = 0; x < width; x += MIN_RADIUS) {
 			uchar blue = ptr[3 * x];
 			uchar green = ptr[3 * x + 1];
 			uchar red = ptr[3 * x + 2];
