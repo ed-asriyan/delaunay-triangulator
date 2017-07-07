@@ -3,14 +3,6 @@ project(delaunay_transformations)
 
 set(CMAKE_C_STANDARD 11)
 
-# loading git module with delaunay implementation
-find_path(DEPENDENCY_DELAUANAY_PATH delaunay)
-if (NOT EXISTS ${DEPENDENCY_DELAUANAY_PATH})
-    message("Downloading dependencies...")
-    execute_process(COMMAND git submodule update --init)
-    message("Done.")
-endif ()
-
 set(DELAUNAY_FILES
         delaunay/delaunay.h delaunay/delaunay.c
         )
