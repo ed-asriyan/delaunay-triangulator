@@ -26,9 +26,9 @@ void shuffle(del_point2d_t* array, size_t n) {
 	}
 }
 
-DtTriangles* dt_triangles_random(const IplImage* image, unsigned int points_num) {
-	const int width = image->width;
-	const int height = image->height;
+DtTriangles* dt_triangles_random(DtTrianglesOptions options) {
+	const int width = options.image->width;
+	const int height = options.image->height;
 
 	const int x_width = width / MIN_RADIUS;
 	const int y_height = height / MIN_RADIUS;
@@ -42,28 +42,28 @@ DtTriangles* dt_triangles_random(const IplImage* image, unsigned int points_num)
 		}
 	}
 
-	if (count < points_num) {
-		points_num = count;
+	if (count < options.points_num) {
+		options.points_num = count;
 	} else {
 		shuffle(all, count);
 	}
 
-	del_point2d_t* points = (del_point2d_t*) malloc(points_num * sizeof(del_point2d_t));
-	memcpy(points, all, points_num * sizeof(del_point2d_t));
+	del_point2d_t* points = (del_point2d_t*) malloc(options.points_num * sizeof(del_point2d_t));
+	memcpy(points, all, options.points_num * sizeof(del_point2d_t));
 	free(all);
 
-	return dt_triangulate(points, points_num);
+	return dt_triangulate(points, options.points_num);
 }
 
-DtTriangles* dt_triangles_canny(const IplImage* image, unsigned int points_num) {
-	const int width = image->width;
-	const int height = image->height;
+DtTriangles* dt_triangles_canny(DtTrianglesOptions options) {
+	const int width = options.image->width;
+	const int height = options.image->height;
 
-	IplImage* gray = cvCreateImage(cvGetSize(image), IPL_DEPTH_8U, 1);
-	cvCvtColor(image, gray, CV_RGB2GRAY);
+	IplImage* gray = cvCreateImage(cvGetSize(options.image), IPL_DEPTH_8U, 1);
+	cvCvtColor(options.image, gray, CV_RGB2GRAY);
 
-	IplImage* dst = cvCreateImage(cvGetSize(image), IPL_DEPTH_8U, 1);
-	cvCanny(image, dst, 10, 10, 3);
+	IplImage* dst = cvCreateImage(cvGetSize(options.image), IPL_DEPTH_8U, 1);
+	cvCanny(options.image, dst, options.canny.threshold1, options.canny.threshold2, 3);
 	cvReleaseImage(&gray);
 
 	unsigned int count = 0;
@@ -105,32 +105,28 @@ DtTriangles* dt_triangles_canny(const IplImage* image, unsigned int points_num) 
 			}
 		}
 	}
-	if (count < points_num) {
-		points_num = count;
+	if (count < options.points_num) {
+		options.points_num = count;
 	} else {
 		shuffle(p, count);
 	}
 
-	del_point2d_t* points = (del_point2d_t*) malloc(points_num * sizeof(del_point2d_t));
-	memcpy(points, p, points_num * sizeof(del_point2d_t));
+	del_point2d_t* points = (del_point2d_t*) malloc(options.points_num * sizeof(del_point2d_t));
+	memcpy(points, p, options.points_num * sizeof(del_point2d_t));
 
 	free(p);
 	cvReleaseImage(&dst);
 
-	DtTriangles* result = dt_triangulate(points, points_num);
+	DtTriangles* result = dt_triangulate(points, options.points_num);
 	return result;
 }
 
-void dt_free_triangles(DtTriangles* triangles) {
-	tri_delaunay2d_release(triangles);
-}
+DtTriangles* dt_triangles_edges(DtTrianglesOptions options) {
+	const int width = options.image->width;
+	const int height = options.image->height;
+	const char* const image_data = options.image->imageData;
 
-DtTriangles* dt_triangles_edges(const IplImage* image, unsigned int points_num) {
-	const int width = image->width;
-	const int height = image->height;
-	const char* const image_data = image->imageData;
-
-	double e = 8;
+	double e = options.edges.e;
 	unsigned int count = 0;
 
 	for (int y = 0; y < height; ++y) {
@@ -195,17 +191,21 @@ DtTriangles* dt_triangles_edges(const IplImage* image, unsigned int points_num) 
 			}
 		}
 	}
-	if (count < points_num) {
-		points_num = count;
+	if (count < options.points_num) {
+		options.points_num = count;
 	} else {
 		shuffle(p, count);
 	}
 
-	del_point2d_t* points = (del_point2d_t*) malloc(points_num * sizeof(del_point2d_t));
-	memcpy(points, p, points_num * sizeof(del_point2d_t));
+	del_point2d_t* points = (del_point2d_t*) malloc(options.points_num * sizeof(del_point2d_t));
+	memcpy(points, p, options.points_num * sizeof(del_point2d_t));
 
 	free(p);
 
-	DtTriangles* result = dt_triangulate(points, points_num);
+	DtTriangles* result = dt_triangulate(points, options.points_num);
 	return result;
+}
+
+void dt_free_triangles(DtTriangles* triangles) {
+	tri_delaunay2d_release(triangles);
 }
