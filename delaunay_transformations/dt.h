@@ -1,8 +1,0 @@
-//
-// Created by ed on 04.07.17.
-//
-
-#ifndef DELAUNAY_TRIANGULATOR_DT_H
-#define DELAUNAY_TRIANGULATOR_DT_H
-
-#endif //DELAUNAY_TRIANGULATOR_DT_H
