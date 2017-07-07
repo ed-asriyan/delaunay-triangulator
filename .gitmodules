@@ -1,3 +1,6 @@
 [submodule "delaunay_transformations/delaunay"]
 	path = delaunay_transformations/delaunay
 	url = https://github.com/eloraiby/delaunay/
+[submodule "argparse/argparse"]
+	path = argparse/argparse
+	url = https://github.com/cofyc/argparse
