@@ -10,17 +10,18 @@
 #include "delaunay_transformations/triangulator.h"
 #include "delaunay_transformations/drawer.h"
 
-DtTriangles* (* generator)(const IplImage* image, unsigned int points_num) = NULL;
-int (* drawer)(IplImage* dst, const IplImage* source, const DtTriangles* triangles) = NULL;
+typedef struct Argumnets {
+	const char* file_name;
+	DtTrianglesOptions options;
 
-const char* file_name = NULL;
+	DtTriangles* (* generator)(DtTrianglesOptions);
+	int (* drawer)(IplImage* dst, const IplImage* source, const DtTriangles* triangles);
+} Argumnets;
 
-unsigned int count = 0;
-
-int recognize_count(const char* name, const char* value) {
+int recognize_count(DtTrianglesOptions* options, const char* name, const char* value) {
 	if (!strcmp(name, "--count") ||
 		!strcmp(name, "-c")) {
-		count = (unsigned int) atoi(value);
+		options->points_num = (unsigned int) atoi(value);
 		return 1;
 	}
 
@@ -69,7 +70,8 @@ void recognize_arguments(int argc, const char* argv[]) {
 	// default
 	generator = dt_triangles_random;
 	drawer = dt_draw_filled;
-	count = 5000;
+
+	options.points_num = 5000;
 
 	for (int i = 0; i < argc; i += 2) {
 		if (recognize_count(argv[i], argv[i + 1])) continue;
@@ -80,7 +82,7 @@ void recognize_arguments(int argc, const char* argv[]) {
 }
 
 int triangulate(const IplImage* source, IplImage* dst) {
-	DtTriangles* triangles = generator(source, count);
+	DtTriangles* triangles = generator(options);
 	if (triangles == NULL) {
 		printf("Error\n");
 		return 1;
@@ -111,7 +113,7 @@ void testCamera() {
 
 		IplImage* dst = cvCreateImage(cvSize(source->width, source->height), 8, 3);
 
-		DtTriangles* triangles = dt_triangles_canny(source, 15000);
+		DtTriangles* triangles = dt_triangles_canny(result);
 		if (triangles == NULL) {
 			printf("Error\n");
 			cvReleaseImage(&source);
@@ -156,7 +158,7 @@ int main(int argc, const char* argv[]) {
 
 	recognize_arguments(argc, argv);
 
-	if (file_name == NULL){
+	if (file_name == NULL) {
 		testCamera();
 	} else {
 		testImage();
