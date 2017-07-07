@@ -15,6 +15,7 @@ add_subdirectory(argparse)
 
 set(SOURCE_FILES
         main.c
+        triangulators.c triangulators.h
         )
 add_executable(delaunay_triangulator ${SOURCE_FILES})
 target_link_libraries(delaunay_triangulator

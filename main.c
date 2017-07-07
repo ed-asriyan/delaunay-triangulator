@@ -3,166 +3,114 @@
 //
 
 #include <cv.h>
-#include <stdio.h>
 #include <time.h>
-#include <string.h>
+
+#include "argparse/argparse/argparse.h"
 
 #include "delaunay_transformations/triangulator.h"
 #include "delaunay_transformations/drawer.h"
 
-typedef struct Argumnets {
-	const char* file_name;
-	DtTrianglesOptions options;
+#include "triangulators.h"
 
-	DtTriangles* (* generator)(DtTrianglesOptions);
-	int (* drawer)(IplImage* dst, const IplImage* source, const DtTriangles* triangles);
-} Argumnets;
+#define STRINGIZE_DETAIL(v) #v
+#define STRINGIZE(v) STRINGIZE_DETAIL(v)
 
-int recognize_count(DtTrianglesOptions* options, const char* name, const char* value) {
-	if (!strcmp(name, "--count") ||
-		!strcmp(name, "-c")) {
-		options->points_num = (unsigned int) atoi(value);
-		return 1;
-	}
+#define ARG_DEFAULT_SOURCE "camera"
+#define ARG_DEFAULT_POINTS_NUM 5000
+#define ARG_DEFAULT_GENERATOR "rand"
 
-	return 0;
-}
+#define ARG_DEFAULT_DRAWER "filled"
 
-int recognize_generator(const char* name, const char* value) {
-	if (!strcmp(name, "--generator") ||
-		!strcmp(name, "-g")) {
+#define ARG_DEFAULT_GEN_CANNY_TH1 10
 
-		if (!strcmp(value, "random") ||
-			!strcmp(value, "rand")) {
-			generator = dt_triangles_random;
-		}
-		if (!strcmp(value, "canny")) {
-			generator = dt_triangles_canny;
-		}
+#define ARG_DEFAULT_GEN_CANNY_TH2 50
 
-		return 1;
-	}
+#define ARG_DEFAULT_GEN_EDGE_E 8
 
-	return 0;
-}
-
-int recognize_drawer(const char* name, const char* value) {
-	if (!strcmp(name, "--drawer") ||
-		!strcmp(name, "-d")) {
-
-		if (!strcmp(value, "fill")) {
-			drawer = dt_draw_filled;
-		}
-		if (!strcmp(value, "edges")) {
-			drawer = dt_draw_edges;
-		}
-		if (!strcmp(value, "edges_thickness")) {
-			drawer = dt_draw_edges_thickness;
-		}
-
-		return 1;
-	}
-
-	return 0;
-}
-
-void recognize_arguments(int argc, const char* argv[]) {
-	// default
-	generator = dt_triangles_random;
-	drawer = dt_draw_filled;
-
-	options.points_num = 5000;
-
-	for (int i = 0; i < argc; i += 2) {
-		if (recognize_count(argv[i], argv[i + 1])) continue;
-		if (recognize_generator(argv[i], argv[i + 1])) continue;
-		if (recognize_drawer(argv[i], argv[i + 1])) continue;
-		file_name = argv[i--];
-	}
-}
-
-int triangulate(const IplImage* source, IplImage* dst) {
-	DtTriangles* triangles = generator(options);
-	if (triangles == NULL) {
-		printf("Error\n");
-		return 1;
-	}
-	printf("[i] points number:    %5d\n", triangles->num_points);
-	printf("[i] triangles number: %5d\n", triangles->num_triangles);
-	printf("\n");
-
-	drawer(dst, source, triangles);
-	dt_free_triangles(triangles);
-
-	return 1;
-}
-
-void testCamera() {
-	CvCapture* capture = cvCreateCameraCapture(CV_CAP_ANY);
-	assert(capture);
-
-	cvSetCaptureProperty(capture, CV_CAP_PROP_FRAME_WIDTH, 1280);
-	cvSetCaptureProperty(capture, CV_CAP_PROP_FRAME_HEIGHT, 960);
-
-	cvNamedWindow("capture", CV_WINDOW_NORMAL);
-
-	printf("[i] press Enter for capture image and Esc for quit!\n\n");
-
-	while (1) {
-		IplImage* source = cvQueryFrame(capture);
-
-		IplImage* dst = cvCreateImage(cvSize(source->width, source->height), 8, 3);
-
-		DtTriangles* triangles = dt_triangles_canny(result);
-		if (triangles == NULL) {
-			printf("Error\n");
-			cvReleaseImage(&source);
-			return;
-		}
-		printf("[i] points number:    %4d\n", triangles->num_points);
-		printf("[i] triangles number: %4d\n", triangles->num_triangles);
-		printf("\n");
-
-		dt_draw_edges_thickness(dst, source, triangles);
-		dt_free_triangles(triangles);
-
-		cvShowImage("original", dst);
-
-		cvReleaseImage(&dst);
-
-		char c = (char) cvWaitKey(33);
-		if (c == 27) { // ESC
-			break;
-		}
-	}
-	cvReleaseCapture(&capture);
-	cvDestroyWindow("capture");
-}
-
-void testImage() {
-	IplImage* source = cvLoadImage(file_name, 1);
-	IplImage* dst = cvCreateImage(cvGetSize(source), 8, 3);
-
-	if (triangulate(source, dst)) {
-		cvNamedWindow("original", CV_WINDOW_NORMAL);
-		cvShowImage("original", dst);
-		cvWaitKey(0);
-	}
-	cvReleaseImage(&dst);
-	cvReleaseImage(&source);
-	cvDestroyWindow("original");
-}
+static const char* const usage[] = {
+	"delaunay_triangulator [options] [[--] args]",
+	"delaunay_triangulator [options]",
+	NULL,
+};
 
 int main(int argc, const char* argv[]) {
 	srand((unsigned int) time(NULL));
 
-	recognize_arguments(argc, argv);
+	const char* source = ARG_DEFAULT_SOURCE;
+	int points_num = ARG_DEFAULT_POINTS_NUM;
+	const char* generator = ARG_DEFAULT_GENERATOR;
+	const char* drawer = ARG_DEFAULT_DRAWER;
 
-	if (file_name == NULL) {
-		testCamera();
-	} else {
-		testImage();
+	int canny_threshold1 = ARG_DEFAULT_GEN_CANNY_TH1;
+	int canny_threshold2 = ARG_DEFAULT_GEN_CANNY_TH2;
+
+	int edge_value = ARG_DEFAULT_GEN_EDGE_E;
+
+	struct argparse_option options[] = {
+		OPT_HELP(),
+		OPT_GROUP("Basic options"),
+		OPT_STRING('s', "source", &source, "[ camera ] or file path; default: "
+			STRINGIZE(ARG_DEFAULT_SOURCE)),
+		OPT_INTEGER('c', "count", &points_num, "points number; default: "
+			STRINGIZE(ARG_DEFAULT_POINTS_NUM)),
+		OPT_STRING('g', "generator", &generator, "[ rand, canny, edges ] points generator; default: "
+			STRINGIZE(ARG_DEFAULT_GENERATOR)),
+		OPT_STRING('d', "drawer", &generator, "[ filled, edges, edges_thick ] drawer method; default: "
+			STRINGIZE(ARG_DEFAULT_DRAWER)),
+
+		OPT_GROUP("Generator canny options"),
+		OPT_INTEGER(NULL, "th1", &canny_threshold1, "threshold1; default: "
+			STRINGIZE(ARG_DEFAULT_GEN_CANNY_TH1)),
+		OPT_INTEGER(NULL, "th2", &canny_threshold2, "threshold2; default: "
+			STRINGIZE(ARG_DEFAULT_GEN_CANNY_TH2)),
+
+		OPT_GROUP("Generator edges options"),
+		OPT_INTEGER(NULL, "edge_value", &edge_value, "edge detect value; default: "
+			STRINGIZE(ARG_DEFAULT_GEN_EDGE_E)),
+
+		OPT_END(),
+	};
+
+	struct argparse argparse;
+	argparse_init(&argparse, options, usage, 0);
+	argc = argparse_parse(&argparse, argc, argv);
+
+
+	Arguments arguments;
+
+	arguments.source =  CAMERA;
+	if (strcmp("camera", source) != 0){
+		arguments.source = IMAGE;
 	}
+
+	if (!strcmp("rand", generator)){
+		arguments.generator = dt_triangles_random;
+	} else if (!strcmp("canny", generator)) {
+		arguments.generator = dt_triangles_canny;
+		arguments.options.canny.threshold1 = canny_threshold1;
+		arguments.options.canny.threshold2 = canny_threshold2;
+	} else if (!strcmp("edges", generator)) {
+		arguments.generator = dt_triangles_edges;
+		arguments.options.edges.e = edge_value;
+	} else {
+		fprintf(stderr, "unknown generator\n");
+	}
+
+	if (!strcmp("filled", drawer)){
+		arguments.drawer = dt_draw_filled;
+	} else if (!strcmp("edges", drawer)) {
+		arguments.drawer = dt_draw_edges;
+	} else if (!strcmp("edges_thick", drawer)) {
+		arguments.drawer = dt_draw_edges_thickness;
+	} else {
+		fprintf(stderr, "unknown drawer\n");
+	}
+
+	arguments.options.points_num = (unsigned int) points_num;
+	arguments.file_name = source;
+
+	test(arguments);
+
 
 	return 0;
 }
