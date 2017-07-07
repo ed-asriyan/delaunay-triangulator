@@ -15,9 +15,9 @@
 typedef tri_delaunay2d_t DtTriangles;
 
 typedef struct DtTrianglesOptions {
+	const IplImage* image;
+	unsigned int points_num;
 	union {
-		const IplImage* image;
-		unsigned int points_num;
 		struct {
 
 		} random;
