@@ -24,6 +24,8 @@ DtTriangles* dt_triangles_random(const IplImage* image, unsigned int points_num)
 
 DtTriangles* dt_triangles_canny(const IplImage* image, unsigned int points_num);
 
+DtTriangles* dt_triangles_edges(const IplImage* image, unsigned int points_num);
+
 void dt_free_triangles(DtTriangles* triangles);
 
 #endif //DELAUNAY_TRIANGULATOR_DT_H

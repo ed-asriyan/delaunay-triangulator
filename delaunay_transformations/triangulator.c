@@ -124,3 +124,88 @@ DtTriangles* dt_triangles_canny(const IplImage* image, unsigned int points_num) 
 void dt_free_triangles(DtTriangles* triangles) {
 	tri_delaunay2d_release(triangles);
 }
+
+DtTriangles* dt_triangles_edges(const IplImage* image, unsigned int points_num) {
+	const int width = image->width;
+	const int height = image->height;
+	const char* const image_data = image->imageData;
+
+	double e = 8;
+	unsigned int count = 0;
+
+	for (int y = 0; y < height; ++y) {
+		for (int x = 0; x < width; ++x) {
+			double sum = 0;
+			double total = 0;
+
+			for (char row = -1; row <= 1; ++row) {
+				int sy = y + row;
+				int step = sy * width;
+				if (sy >= 0 && sy < height) {
+					for (char col = -1; col <= 1; ++col) {
+						int sx = x + col;
+
+						if (sx >= 0 && sx < width) {
+							sum += image_data[(sx + step) * 3];
+							total++;
+						}
+					}
+				}
+			}
+
+			if (total) sum /= total;
+			if (sum > e) {
+				++count;
+			}
+		}
+	}
+
+	if (count < 3) {
+		return NULL;
+	}
+
+	del_point2d_t* p = (del_point2d_t*) malloc(count * sizeof(del_point2d_t));
+
+	unsigned int i = 0;
+	for (int y = 0; y < height; ++y) {
+		for (int x = 0; x < width; ++x) {
+			double sum = 0;
+			double total = 0;
+
+			for (char row = -1; row <= 1; ++row) {
+				int sy = y + row;
+				int step = sy * width;
+				if (sy >= 0 && sy < height) {
+					for (char col = -1; col <= 1; ++col) {
+						int sx = x + col;
+
+						if (sx >= 0 && sx < width) {
+							sum += image_data[(sx + step) * 3];
+							total++;
+						}
+					}
+				}
+			}
+
+			if (total) sum /= total;
+			if (sum > e) {
+				p[i].x = x;
+				p[i].y = y;
+				++i;
+			}
+		}
+	}
+	if (count < points_num) {
+		points_num = count;
+	} else {
+		shuffle(p, count);
+	}
+
+	del_point2d_t* points = (del_point2d_t*) malloc(points_num * sizeof(del_point2d_t));
+	memcpy(points, p, points_num * sizeof(del_point2d_t));
+
+	free(p);
+
+	DtTriangles* result = dt_triangulate(points, points_num);
+	return result;
+}
