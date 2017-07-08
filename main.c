@@ -10,7 +10,7 @@
 #include "delaunay_transformations/triangulator.h"
 #include "delaunay_transformations/drawer.h"
 
-#include "triangulators.h"
+#include "triangulate.h"
 
 #define STRINGIZE_DETAIL(v) #v
 #define STRINGIZE(v) STRINGIZE_DETAIL(v)
@@ -39,6 +39,19 @@ static const char* const usage[] = {
 	"delaunay_triangulator [options]",
 	NULL,
 };
+
+void test_image(const char* file_name) {
+	IplImage* source = cvLoadImage(file_name, 1);
+
+	filter_gray_scale_r(source);
+
+	cvNamedWindow("original", CV_WINDOW_NORMAL);
+	cvShowImage("original", source);
+	cvWaitKey(0);
+
+	cvReleaseImage(&source);
+	cvDestroyWindow("original");
+}
 
 int main(int argc, const char* argv[]) {
 	srand((unsigned int) time(NULL));
@@ -73,6 +86,8 @@ int main(int argc, const char* argv[]) {
 		fprintf(stderr, "source is not set. Type\n\tdelaunay_triangulator --help\nfor more details.\n");
 		return -1;
 	}
+
+	test_image(source);
 
 	return 0;
 }
