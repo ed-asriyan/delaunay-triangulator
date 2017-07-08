@@ -12,6 +12,8 @@
 #include "delaunay_transformations/drawer.h"
 #include "delaunay_transformations/triangulator.h"
 
+#include "filter.h"
+
 enum Source {
 	IMAGE,
 	CAMERA

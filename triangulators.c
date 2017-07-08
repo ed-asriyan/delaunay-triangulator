@@ -33,7 +33,7 @@ void testCamera(Arguments arguments) {
 
 	while (1) {
 		IplImage* source = cvQueryFrame(capture);
-		arguments.options.image  =source;
+		arguments.options.image = source;
 		IplImage* dst = cvCreateImage(cvSize(source->width, source->height), 8, 3);
 
 		DtTriangles* triangles = arguments.generator(arguments.options);
@@ -64,16 +64,13 @@ void testCamera(Arguments arguments) {
 
 void testImage(Arguments arguments) {
 	IplImage* source = cvLoadImage(arguments.file_name, 1);
-	IplImage* dst = cvCreateImage(cvGetSize(source), 8, 3);
 
-	arguments.options.image = source;
+	filter_gray_scale_r(source);
 
-	if (triangulate(arguments, dst)) {
-		cvNamedWindow("original", CV_WINDOW_NORMAL);
-		cvShowImage("original", dst);
-		cvWaitKey(0);
-	}
-	cvReleaseImage(&dst);
+	cvNamedWindow("original", CV_WINDOW_NORMAL);
+	cvShowImage("original", source);
+	cvWaitKey(0);
+
 	cvReleaseImage(&source);
 	cvDestroyWindow("original");
 }
